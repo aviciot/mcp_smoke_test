@@ -25,16 +25,3 @@ mcp = FastMCP(
 )
 
 logger.info(f"Initializing {mcp.name}")
-
-# ========================================
-# AUTO-IMPORT AND REGISTER TOOLS
-# ========================================
-# Import all tools, resources, and prompts
-# This ensures they are registered with @mcp.tool() decorators before server starts
-from utils.import_utils import import_submodules
-
-import_submodules('tools')
-import_submodules('resources')
-import_submodules('prompts')
-
-logger.info("All tools, resources, and prompts registered")

@@ -1,12 +1,15 @@
 """
 Template MCP Server - Starlette Application
 ===========================================
-MCP server with authentication middleware
+MCP server with authentication middleware and auto-discovery
 """
 
 import os
 import sys
+import signal
 import logging
+import importlib
+import pkgutil
 import warnings
 
 from starlette.applications import Starlette
@@ -29,6 +32,46 @@ logger = logging.getLogger(__name__)
 config = get_config()
 
 # ========================================
+# AUTO-DISCOVERY CONFIGURATION
+# ========================================
+AUTO_DISCOVER = os.getenv("AUTO_DISCOVER", "true").lower() in ("1", "true", "yes", "on")
+
+# ========================================
+# MODULE LOADING HELPERS
+# ========================================
+def import_submodules(pkg_name: str):
+    """Auto-import all submodules in a package (tools/resources/prompts)."""
+    try:
+        pkg = __import__(pkg_name)
+        for _, modname, ispkg in pkgutil.iter_modules(pkg.__path__):
+            if not ispkg and not modname.startswith('_'):
+                full_name = f"{pkg_name}.{modname}"
+                importlib.import_module(full_name)
+                logger.info(f"✅ Loaded: {full_name}")
+    except Exception as e:
+        logger.error(f"❌ Failed to load {pkg_name}: {e}")
+
+def safe_import(name: str):
+    """Static import (fallback when AUTO_DISCOVER disabled)."""
+    try:
+        module = __import__(name, fromlist=["*"])
+        logger.info(f"✅ Imported: {name}")
+        return module
+    except Exception as e:
+        logger.exception(f"❌ Failed to import: {name}: {e}")
+        raise
+
+# ========================================
+# GRACEFUL SHUTDOWN
+# ========================================
+def _graceful_shutdown(*_):
+    logger.info("🛑 Received shutdown signal, stopping gracefully...")
+    sys.exit(0)
+
+for sig in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(sig, _graceful_shutdown)
+
+# ========================================
 # STARTUP BANNER
 # ========================================
 logger.info("=" * 80)
@@ -41,6 +84,20 @@ logger.info(f"🌐 Port: {os.getenv('MCP_PORT', config.get('server.port', 8000))
 auth_enabled = config.is_authentication_enabled()
 auth_icon = "✅" if auth_enabled else "❌"
 logger.info(f"🔐 Authentication: {auth_icon} {'Enabled' if auth_enabled else 'Disabled'}")
+
+logger.info("-" * 80)
+
+# ========================================
+# AUTO-DISCOVER MODULES
+# ========================================
+if AUTO_DISCOVER:
+    logger.info("🔍 Auto-discovery enabled - loading all tools/resources/prompts...")
+    for pkg in ("tools", "resources", "prompts"):
+        import_submodules(pkg)
+else:
+    logger.info("📦 Using static imports...")
+    for pkg in ("tools", "resources", "prompts"):
+        safe_import(pkg)
 
 logger.info("-" * 80)
 logger.info("📡 MCP Server: Ready")

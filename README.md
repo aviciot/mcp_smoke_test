@@ -5,11 +5,12 @@ A production-ready base template for building MCP (Model Context Protocol) serve
 ## Features
 
 - ✅ **FastMCP 2.x** - Latest FastMCP framework
-- ✅ **Auto-Discovery** - Automatically imports tools, resources, and prompts
+- ✅ **Auto-Discovery** - Automatically discovers and loads all tools, resources, and prompts
 - ✅ **Authentication** - Optional Bearer token authentication
 - ✅ **Configurable Port** - Set via environment variable
 - ✅ **Hot-Reload Config** - Changes to settings.yaml without restart
 - ✅ **Docker Ready** - Complete Docker setup with health checks
+- ✅ **Graceful Shutdown** - Handles SIGINT/SIGTERM properly
 - ✅ **Example Patterns** - Clean examples for tool/resource/prompt
 
 ## Quick Start
@@ -124,7 +125,8 @@ def my_prompt(context: str = "") -> str:
 
 ### Environment Variables
 
-- `MCP_PORT` - Server port (default: 8000)
+- `MCP_PORT` - Server port (default: 8100)
+- `AUTO_DISCOVER` - Auto-load tools/resources/prompts (default: true)
 - `AUTH_ENABLED` - Enable authentication (default: false)
 - `AUTH_TOKEN` - Bearer token for authentication
 
