@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 # Load configuration
 config = get_config()
 
+# Validate configuration (fail fast if misconfigured)
+from utils.config_validator import validate_config
+validate_config(config)
+
 # ========================================
 # AUTO-DISCOVERY CONFIGURATION
 # ========================================
@@ -168,6 +172,11 @@ if config.is_authentication_enabled():
     app.add_middleware(AuthenticationMiddleware)
     logger.info("Authentication middleware enabled")
 
+# Add request logging middleware
+from utils.request_logging import RequestLoggingMiddleware
+app.add_middleware(RequestLoggingMiddleware)
+logger.info("Request logging middleware enabled")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -195,11 +204,41 @@ async def version_info(request):
     })
 
 
+async def deep_health_check(request):
+    """
+    Deep health check - checks dependencies
+    
+    Returns 200 if all dependencies are healthy, 503 otherwise
+    """
+    health = {
+        "status": "healthy",
+        "checks": {
+            "server": "ok"
+        }
+    }
+    
+    # Add database health check if you have DB
+    # try:
+    #     from db.connector import db
+    #     if await db.health_check():
+    #         health["checks"]["database"] = "ok"
+    #     else:
+    #         health["checks"]["database"] = "unhealthy"
+    #         health["status"] = "unhealthy"
+    # except Exception as e:
+    #     health["checks"]["database"] = f"error: {str(e)}"
+    #     health["status"] = "unhealthy"
+    
+    status_code = 200 if health["status"] == "healthy" else 503
+    return JSONResponse(health, status_code=status_code)
+
+
 # ========================================
 # ROUTES
 # ========================================
 app.add_route("/healthz", health_check, methods=["GET"])
 app.add_route("/health", health_check, methods=["GET"])
+app.add_route("/health/deep", deep_health_check, methods=["GET"])
 app.add_route("/version", version_info, methods=["GET"])
 
 # ========================================

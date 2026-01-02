@@ -1,17 +1,24 @@
 # Template MCP Server
 
-A production-ready base template for building MCP (Model Context Protocol) servers using FastMCP.
+A production-ready base template for building MCP (Model Context Protocol) servers using FastMCP 2.x.
 
 ## Features
 
-- ✅ **FastMCP 2.x** - Latest FastMCP framework
+- ✅ **FastMCP 2.x** - Latest FastMCP framework with proper API usage
 - ✅ **Auto-Discovery** - Automatically discovers and loads all tools, resources, and prompts
-- ✅ **Authentication** - Optional Bearer token authentication
-- ✅ **Configurable Port** - Set via environment variable
-- ✅ **Hot-Reload Config** - Changes to settings.yaml without restart
+- ✅ **Request Logging** - Logs every request with correlation IDs for debugging
+- ✅ **Error Handling** - Comprehensive error handling patterns in all tools
+- ✅ **Config Validation** - Validates configuration on startup (fail fast)
+- ✅ **Multiple Auth Methods** - Bearer token, API Key, Basic Auth support
+- ✅ **Health Checks** - Simple (`/healthz`) and deep (`/health/deep`) health checks
+- ✅ **Environment Configs** - Separate configs for dev/prod environments
+- ✅ **Testing Framework** - Pytest examples for testing tools
+- ✅ **Database Template** - Connection pooling pattern for databases
+- ✅ **Structured Logging** - Optional JSON logging for production
 - ✅ **Docker Ready** - Complete Docker setup with health checks
 - ✅ **Graceful Shutdown** - Handles SIGINT/SIGTERM properly
-- ✅ **Example Patterns** - Clean examples for tool/resource/prompt
+- ✅ **Rate Limiting** - Optional rate limiting middleware
+- ✅ **LLM-Ready** - Comprehensive SPEC.md for AI-assisted development
 
 ## Quick Start
 
@@ -45,6 +52,9 @@ docker-compose up -d
 # Health check
 curl http://localhost:8100/healthz
 
+# Deep health check
+curl http://localhost:8100/health/deep
+
 # Version info
 curl http://localhost:8100/version
 
@@ -56,6 +66,14 @@ curl http://localhost:8100/version
 # - MCP TypeScript SDK
 ```
 
+### 5. Run Tests
+
+```bash
+cd template_mcp
+pip install -r tests/requirements.txt
+pytest tests/ -v
+```
+
 **Note**: The MCP protocol uses Server-Sent Events (SSE) and requires proper session management. Direct curl requests won't work - use an MCP client SDK or configure Claude Desktop to connect.
 
 ## Project Structure
@@ -64,20 +82,32 @@ curl http://localhost:8100/version
 template_mcp/
 ├── server/
 │   ├── config.py              # Configuration loader
-│   ├── server.py              # Starlette app with auth
+│   ├── server.py              # Starlette app with middleware
 │   ├── mcp_app.py            # FastMCP instance
 │   ├── config/
-│   │   └── settings.yaml     # Configuration file
+│   │   ├── settings.yaml     # Default configuration
+│   │   ├── settings.dev.yaml # Development config
+│   │   └── settings.prod.yaml # Production config
 │   ├── tools/
-│   │   └── example_tool.py   # Example tool
+│   │   └── example_tool.py   # Example tool with error handling
 │   ├── resources/
 │   │   └── example_resource.py  # Example resource
 │   ├── prompts/
 │   │   └── example_prompt.py    # Example prompt
+│   ├── db/
+│   │   └── connector.py      # Database connector template
 │   └── utils/
-│       └── import_utils.py   # Auto-discovery
+│       ├── import_utils.py   # Auto-discovery
+│       ├── config_validator.py  # Config validation
+│       ├── request_logging.py   # Request logging
+│       └── rate_limiting.py     # Rate limiting (optional)
+├── tests/
+│   ├── conftest.py           # Pytest configuration
+│   ├── test_example_tool.py # Example tests
+│   └── requirements.txt      # Test dependencies
 ├── docker-compose.yml
 ├── Dockerfile
+├── SPEC.md                   # Technical spec for LLMs
 └── .env.example
 ```
 
@@ -114,23 +144,41 @@ async def my_resource() -> str:
 ```python
 # server/prompts/my_prompt.py
 from mcp_app import mcp
-
-@mcp.prompt()
-def my_prompt(context: str = "") -> str:
-    """Prompt description"""
-    return f"System prompt with {context}"
-```
-
-## Configuration
-
-### Environment Variables
-
+ENV` - Environment (dev, prod, or default)
 - `MCP_PORT` - Server port (default: 8100)
 - `AUTO_DISCOVER` - Auto-load tools/resources/prompts (default: true)
 - `AUTH_ENABLED` - Enable authentication (default: false)
 - `AUTH_TOKEN` - Bearer token for authentication
+- `LOG_LEVEL` - Logging level (DEBUG, INFO, WARNING, ERROR)
+- `LOG_FORMAT` - Log format (text or json)
+
+### Environment-Specific Configs
+
+Load different configurations based on environment:
+
+```bash
+# Development
+ENV=dev docker-compose up  # Uses settings.dev.yaml
+
+# Production
+ENV=prod docker-compose up  # Uses settings.prod.yaml
+
+# Default
+docker-compose up  # Uses settings.yaml
+```
 
 ### Settings File
+
+Edit `server/config/settings.yaml` for:
+- Server name and version
+- Custom configuration
+- Business logic
+
+Use `${ENV_VAR}` syntax to reference environment variables:
+
+```yaml
+server:
+  port: ${MCP_PORT:-8100}  # Default 81
 
 Edit `server/config/settings.yaml` for:
 - Server name and version
@@ -152,11 +200,59 @@ Enable authentication in `.env`:
 AUTH_ENABLED=true
 AUTH_TOKEN=your-secret-token
 ```
-
-Then use Bearer token in requests:
+Run Tests
 
 ```bash
-curl -H "Authorization: Bearer your-secret-token" \
+pip install -r tests/requirements.txt
+pytest tests/ -v
+```
+
+### View Logs
+
+```bash
+docker-compose logs -f template_mcp
+```
+
+### Enable Rate Limiting (Optional)
+
+1. Uncomment `slowapi` in `server/requirements.txt`
+2. Uncomment rate limiting code in `server.py`
+3. Rebuild container: `docker-compose build`
+
+### Database Integration (Optional)
+
+1. Uncomment your database driver in `server/requirements.txt`
+2. Adapt `server/db/connector.py` for your database
+3. Initialize connection in `server.py` startup
+4. Use in tools: `from db.connector import db`
+
+## For LLMs: Creating New MCPs
+
+Read [SPEC.md](SPEC.md) for comprehensive technical specification including:
+- Exact patterns to follow
+- File templates
+- Critical rules (imports, FastMCP API, etc.)
+- Testing patterns
+- Common mistakes to avoid
+
+**Quick Start**: Clone this repo, read SPEC.md, follow the checklist.
+
+## Request Logging
+
+All requests are logged with correlation IDs:
+
+```
+[abc12345] → POST /mcp
+[abc12345] ← 200 POST /mcp (45ms)
+```
+
+Correlation IDs are also returned in response headers: `X-Correlation-ID`
+
+## Health Checks
+
+- `/healthz` - Simple health check (fast)
+- `/health/deep` - Checks all dependencies (database, external APIs)
+- `/version` - Server version infol -H "Authorization: Bearer your-secret-token" \
   http://localhost:8000/
 ```
 

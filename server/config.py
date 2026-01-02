@@ -28,8 +28,17 @@ class Config:
             config_path: Path to settings.yaml file. If None, uses default location.
         """
         if config_path is None:
-            # Default path: server/config/settings.yaml
-            config_path = Path(__file__).parent / "config" / "settings.yaml"
+            # Check for environment-specific config
+            env = os.getenv('ENV', 'default')
+            if env == 'dev':
+                config_file = 'settings.dev.yaml'
+            elif env == 'prod':
+                config_file = 'settings.prod.yaml'
+            else:
+                config_file = 'settings.yaml'
+            
+            # Default path: server/config/settings.yaml (or env-specific)
+            config_path = Path(__file__).parent / "config" / config_file
         
         self.config_path = Path(config_path)
         self._config = self._load_config()
