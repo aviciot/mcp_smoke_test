@@ -67,6 +67,82 @@ your_mcp/
 
 ## 🔧 Critical Rules (HARD REQUIREMENTS)
 
+### 0. Tool and Prompt Decorator Pattern ⚠️ **#0 PRIORITY - ALWAYS USE EXPLICIT PARAMETERS**
+
+**THE PROBLEM THAT CAUSED CLIENT FAILURES:**
+Using empty decorators `@mcp.tool()` with `async def` and return type annotations causes MCP clients (mcpjam, Claude Desktop) to receive undefined/invalid output structures. The clients expect a specific format that only works with explicit decorator parameters.
+
+**THE CORRECT PATTERN (ONLY ACCEPTABLE FORMAT):**
+
+```python
+# ✅ CORRECT - ALWAYS USE THIS PATTERN
+@mcp.tool(
+    name="tool_name",
+    description="Clear, detailed description of what this tool does and when to use it"
+)
+def tool_name(param1: str, param2: int = 10):
+    """Docstring for internal documentation."""
+    # Tool logic here
+    return "result string"
+
+@mcp.prompt(
+    name="prompt_name",
+    description="Clear description of what context/guidance this prompt provides"
+)
+def prompt_name(context: str):
+    """Docstring for internal documentation."""
+    return f"""Prompt template text for {context}"""
+```
+
+**NEVER USE THESE PATTERNS (WILL BREAK MCP CLIENTS):**
+
+```python
+# ❌ WRONG - Empty decorator
+@mcp.tool()
+async def tool_name(param: str) -> str:
+    return result
+
+# ❌ WRONG - Missing explicit name/description
+@mcp.tool()
+def tool_name(param: str):
+    return result
+
+# ❌ WRONG - Using async keyword
+@mcp.tool(name="tool_name", description="...")
+async def tool_name(param: str):
+    return result
+
+# ❌ WRONG - Using return type annotation
+@mcp.tool(name="tool_name", description="...")
+def tool_name(param: str) -> str:
+    return result
+```
+
+**CRITICAL RULES:**
+- ✅ MUST include explicit `name="..."` parameter in decorator
+- ✅ MUST include explicit `description="..."` parameter in decorator
+- ❌ NO `async` keyword on tool/prompt functions
+- ❌ NO return type annotations (like `-> str`, `-> dict`, `-> list`)
+- ✅ Use regular `def`, never `async def`
+- ✅ Functions can call async code internally if needed (using `asyncio.run()`)
+- ✅ Multiple tools/prompts CAN be grouped in one file by category
+  - Example: `database_tools.py` with list_databases, query_database, get_schema
+  - Example: `container_tools.py` with start_container, stop_container, restart_container
+- ✅ Auto-discovery finds all `@mcp.tool()` and `@mcp.prompt()` decorated functions across all files
+
+**WHY THIS MATTERS:**
+MCP clients parse tool/prompt metadata from the decorator parameters. When decorators are empty or functions use async/return types, FastMCP's internal serialization produces output that clients can't parse, resulting in "invalid output" errors.
+
+**FILE ORGANIZATION:**
+You don't need one tool per file. Group related tools together:
+- Good: `tools/database_operations.py` with 5 database tools
+- Good: `tools/api_tools.py` with 3 API endpoint tools
+- Okay but verbose: `tools/list_items.py`, `tools/create_item.py`, `tools/delete_item.py`
+
+Auto-discovery will find and register all decorated functions regardless of how you organize files.
+
+---
+
 ### 1. Environment Variable Handling ⚠️ **MOST CRITICAL - ALWAYS FOLLOW THIS**
 
 **THE PROBLEM THAT CAUSED FAILURES:**
