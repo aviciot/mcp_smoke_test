@@ -1,14 +1,20 @@
 # Template MCP - Technical Specification
 ## For LLM-Assisted Development
 
-**Version**: 1.0.0  
-**Last Updated**: January 1, 2026
+**Version**: 2.0.0  
+**Last Updated**: January 6, 2026
 
 ---
 
 ## 📋 Overview
 
 This document defines the **exact patterns and structure** to follow when creating new MCP servers using this template. When an LLM is asked to create a new MCP (e.g., "Create Salesforce MCP"), this spec ensures consistency and correctness.
+
+**NEW in v2.0**:
+- ✅ Knowledge base system for LLM-accessible documentation
+- ✅ Traefik gateway integration patterns
+- ✅ Enhanced README structure
+- ✅ Help tools for runtime documentation access
 
 ---
 
@@ -18,32 +24,44 @@ This document defines the **exact patterns and structure** to follow when creati
 your_mcp/
 ├── server/
 │   ├── __init__.py                    # Empty file
-│   ├── config.py                      # Configuration loader (MODULE, not package)
-│   ├── server.py                      # Starlette app + middleware
-│   ├── mcp_app.py                     # FastMCP instance (MINIMAL - no tool logic)
+│   ├── config.py                      # Configuration loader (MODULE, not package) ⭐ DON'T MODIFY
+│   ├── server.py                      # Starlette app + middleware ⭐ DON'T MODIFY
+│   ├── mcp_app.py                     # FastMCP instance (MINIMAL - no tool logic) ⭐ DON'T MODIFY
 │   │
 │   ├── config/                        # Configuration directory
-│   │   ├── settings.yaml              # Default config
-│   │   ├── settings.dev.yaml          # Development config (optional)
-│   │   └── settings.prod.yaml         # Production config (optional)
+│   │   ├── settings.yaml              # Default config 📝 CUSTOMIZE
+│   │   ├── settings.dev.yaml          # Development config (optional) 📝 CUSTOMIZE
+│   │   └── settings.prod.yaml         # Production config (optional) 📝 CUSTOMIZE
+│   │
+│   ├── knowledge_base/                # 🆕 Documentation for LLMs
+│   │   ├── README.md                  # Knowledge base guide
+│   │   ├── _TEMPLATE_overview.md      # Template for overview
+│   │   ├── _TEMPLATE_tool_doc.md      # Template for tool documentation
+│   │   ├── overview.md                # 📝 CREATE: What this MCP does
+│   │   ├── workflows.md               # 📝 CREATE: Step-by-step guides
+│   │   ├── architecture.md            # 📝 CREATE: Internal design (with diagrams)
+│   │   ├── troubleshooting.md         # 📝 CREATE: Common errors and fixes
+│   │   └── tools/                     # Tool-specific documentation
+│   │       └── tool_name.md           # 📝 CREATE: Per-tool docs
 │   │
 │   ├── tools/                         # MCP Tools
 │   │   ├── __init__.py
-│   │   └── *.py                       # Tool files (auto-discovered)
+│   │   ├── help_tools.py              # 🆕 Knowledge base access tools (INCLUDE)
+│   │   └── *.py                       # 📝 CUSTOMIZE: Your tool files (auto-discovered)
 │   │
 │   ├── resources/                     # MCP Resources
 │   │   ├── __init__.py
-│   │   └── *.py                       # Resource files (auto-discovered)
+│   │   └── *.py                       # 📝 CUSTOMIZE: Resource files (auto-discovered)
 │   │
 │   ├── prompts/                       # MCP Prompts
 │   │   ├── __init__.py
-│   │   └── *.py                       # Prompt files (auto-discovered)
+│   │   └── *.py                       # 📝 CUSTOMIZE: Prompt files (auto-discovered)
 │   │
 │   ├── db/                            # Database connectors (optional)
 │   │   ├── __init__.py
-│   │   └── *.py                       # Database connection logic
+│   │   └── *.py                       # 📝 CUSTOMIZE: Database connection logic
 │   │
-│   └── utils/                         # Utility modules
+│   └── utils/                         # Utility modules ⭐ DON'T MODIFY
 │       ├── __init__.py
 │       ├── import_utils.py            # Auto-discovery
 │       ├── config_validator.py        # Config validation
@@ -734,13 +752,237 @@ When asked to create a new MCP:
 1. **Clone structure** from template_mcp
 2. **Rename** `template-mcp` → `your-mcp` everywhere
 3. **Update** `settings.yaml` with your MCP name
-4. **Create tools** in `tools/` following tool template
-5. **Create resources** in `resources/` following resource template
-6. **Create prompts** in `prompts/` following prompt template
-7. **Add database** connector in `db/` if needed
-8. **Write tests** in `tests/` for each tool
-9. **Update README** with your MCP description
-10. **Test**: `docker-compose up -d` and verify `/healthz`
+4. **Set up knowledge base** by copying templates:
+   - `cp server/knowledge_base/_TEMPLATE_overview.md server/knowledge_base/overview.md`
+   - Edit `overview.md` and customize all [CUSTOMIZE] sections
+   - For each tool, create `server/knowledge_base/tools/tool_name.md`
+5. **Create tools** in `tools/` following tool template
+6. **Create resources** in `resources/` following resource template
+7. **Create prompts** in `prompts/` following prompt template
+8. **Add database** connector in `db/` if needed
+9. **Configure Traefik** if using gateway:
+   - Set `USE_TRAEFIK=true` in `.env`
+   - Uncomment Traefik labels in `docker-compose.yml`
+   - Uncomment `mcp_network` in `docker-compose.yml`
+10. **Write tests** in `tests/` for each tool
+11. **Update README** with your MCP description
+12. **Test**: `docker-compose up -d` and verify `/healthz`
+
+---
+
+## 📚 Knowledge Base System (NEW in v2.0)
+
+### What is it?
+
+The knowledge base provides **LLM-queryable documentation** that lives with your code. LLMs can read this documentation at runtime to understand how to use your MCP.
+
+### Why Use It?
+
+- ✅ **Never goes stale** - Documentation updates with code changes
+- ✅ **LLM-accessible** - Built-in help tools for querying docs
+- ✅ **Maintainable** - Just edit markdown files
+- ✅ **Version-controlled** - Docs live in git with code
+
+### Required Files
+
+Create these files in `server/knowledge_base/`:
+
+1. **`overview.md`** (Copy from `_TEMPLATE_overview.md`)
+   - What your MCP does
+   - When to use it
+   - Available tools list
+   - Security and authentication
+   - Configuration requirements
+
+2. **`workflows.md`** (Create manually)
+   - Step-by-step task guides
+   - Common workflows
+   - Example conversations
+   - Tool combination patterns
+
+3. **`architecture.md`** (Create manually)
+   - How the MCP works internally
+   - Data flow diagrams (use Mermaid!)
+   - Configuration impact
+   - Performance characteristics
+
+4. **`troubleshooting.md`** (Create manually)
+   - Common errors and messages
+   - Causes and solutions
+   - Debugging tips
+   - FAQ
+
+5. **`tools/tool_name.md`** (Copy from `_TEMPLATE_tool_doc.md` for each tool)
+   - Input parameters with examples
+   - Output structure
+   - Usage examples
+   - Real-world scenarios
+   - Error handling
+
+### Help Tools Pattern
+
+**ALWAYS include `help_tools.py`** in your MCP:
+
+```python
+# server/tools/help_tools.py
+from pathlib import Path
+from mcp_app import mcp
+
+KNOWLEDGE_BASE_DIR = Path(__file__).parent.parent / "knowledge_base"
+
+def read_knowledge_file(filename: str) -> str:
+    """Read markdown file from knowledge_base directory"""
+    filepath = KNOWLEDGE_BASE_DIR / filename
+    if filepath.exists():
+        return filepath.read_text(encoding='utf-8')
+    return f"❌ File not found: {filename}"
+
+@mcp.tool(
+    name="list_knowledge_base_topics",
+    description="📚 List all available documentation topics"
+)
+def list_knowledge_base_topics():
+    # Implementation here
+    pass
+
+@mcp.tool(
+    name="get_knowledge_base_content",
+    description="📖 Get documentation from knowledge base"
+)
+def get_knowledge_base_content(topic: str = "overview"):
+    # Implementation here
+    pass
+```
+
+See the template's `server/tools/help_tools.py` for complete implementation.
+
+### Documentation Best Practices
+
+1. **Be specific** - Include actual examples, not placeholders
+2. **Add diagrams** - Use Mermaid for architecture/flow diagrams
+3. **Real errors** - Document actual error messages users will see
+4. **Update regularly** - Keep docs in sync with code changes
+5. **User-focused** - Write for LLM consumption, not developers
+
+---
+
+## 🌐 Traefik Gateway Integration (NEW in v2.0)
+
+### What is Traefik Integration?
+
+Traefik allows multiple MCPs to be accessed through a **single gateway** with **path-based routing**:
+- Without Traefik: `http://localhost:8100/` (each MCP on different port)
+- With Traefik: `http://localhost:8000/mcp-name/` (all MCPs on one gateway)
+
+### When to Use Traefik
+
+✅ **Use Traefik when:**
+- Running multiple MCPs that need unified access
+- Need load balancing across MCP instances
+- Want centralized TLS termination
+- Building production multi-MCP architecture
+
+❌ **Skip Traefik when:**
+- Running single MCP
+- Development/testing locally
+- Simple standalone deployment
+
+### Configuration Pattern
+
+#### 1. Environment Variables (.env)
+
+```bash
+# Basic MCP Configuration
+MCP_CONTAINER_NAME=my_mcp
+MCP_NAME=my-mcp              # Used in URL path
+MCP_PORT=8100                 # External port (when NOT using Traefik)
+
+# Traefik Configuration
+USE_TRAEFIK=false             # Set to 'true' to enable
+TRAEFIK_ENTRYPOINT=web        # Usually 'web' for HTTP
+TRAEFIK_PATH_PREFIX=/my-mcp   # Gateway routes this path to your MCP
+```
+
+#### 2. Docker Compose (docker-compose.yml)
+
+The template includes **commented Traefik labels**. To enable:
+
+**Without Traefik (Default)**:
+```yaml
+services:
+  my_mcp:
+    ports:
+      - "${MCP_PORT:-8100}:8000"  # Direct port binding
+    networks:
+      - default
+```
+
+**With Traefik (Uncomment labels)**:
+```yaml
+services:
+  my_mcp:
+    # ports:  # Comment out direct port binding
+    #   - "${MCP_PORT:-8100}:8000"
+    
+    networks:
+      - mcp_network  # Uncomment this
+    
+    labels:  # Uncomment all these labels
+      - "traefik.enable=true"
+      - "traefik.http.routers.${MCP_NAME}.rule=PathPrefix(`/${MCP_NAME}`)"
+      - "traefik.http.routers.${MCP_NAME}.entrypoints=web"
+      - "traefik.http.middlewares.${MCP_NAME}-stripprefix.stripprefix.prefixes=/${MCP_NAME}"
+      - "traefik.http.routers.${MCP_NAME}.middlewares=${MCP_NAME}-stripprefix"
+      - "traefik.http.services.${MCP_NAME}.loadbalancer.server.port=8000"
+      - "traefik.http.services.${MCP_NAME}.loadbalancer.healthcheck.path=/healthz"
+
+networks:
+  # mcp_network:  # Uncomment when using Traefik
+  #   external: true
+  #   name: mcp_network
+```
+
+#### 3. Pattern to Follow
+
+When an LLM creates a new MCP:
+
+1. **Ask the user**: "Will this MCP use a Traefik gateway?"
+   
+2. **If YES**:
+   - Set `USE_TRAEFIK=true` in `.env`
+   - Set `MCP_NAME` to unique identifier (e.g., `salesforce-mcp`)
+   - In `docker-compose.yml`:
+     - Comment out `ports:` section
+     - Uncomment all `labels:` lines
+     - Uncomment `mcp_network` in `networks:`
+
+3. **If NO** (default):
+   - Leave `USE_TRAEFIK=false`
+   - Keep `ports:` section active
+   - Keep labels commented
+   - Use default network
+
+### Access Patterns
+
+```bash
+# Without Traefik
+curl http://localhost:8100/healthz
+curl http://localhost:8100/mcp
+
+# With Traefik (assuming MCP_NAME=my-mcp)
+curl http://localhost:8000/my-mcp/healthz
+curl http://localhost:8000/my-mcp/mcp
+```
+
+### Important Notes
+
+1. **PathPrefix stripping**: The `stripprefix` middleware removes `/mcp-name` before forwarding to your MCP, so your MCP still sees requests at root `/`
+
+2. **Health checks**: Traefik automatically monitors `/healthz` and removes unhealthy instances from load balancing
+
+3. **Network requirement**: MCPs using Traefik must join the `mcp_network` which should be created by the gateway
+
+4. **Port conflicts**: When using Traefik, don't expose ports directly - gateway handles all routing
 
 ---
 
@@ -756,6 +998,10 @@ When asked to create a new MCP:
 8. ❌ Not testing tools
 9. ❌ Hardcoding configuration (use config.get())
 10. ❌ Missing health checks
+11. ❌ **NEW**: Skipping knowledge base setup
+12. ❌ **NEW**: Modifying core files (server.py, mcp_app.py, config.py)
+13. ❌ **NEW**: Enabling Traefik without uncommenting network
+14. ❌ **NEW**: Not documenting tools in knowledge base
 
 ---
 
@@ -765,6 +1011,7 @@ For questions or issues, refer to:
 - FastMCP 2.x documentation
 - This template's README.md
 - Example implementations in the template
+- Knowledge base templates in `server/knowledge_base/`
 
 ---
 
