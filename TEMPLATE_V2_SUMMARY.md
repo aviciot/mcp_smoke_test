@@ -118,12 +118,12 @@ TRAEFIK_PATH_PREFIX=/template-mcp
 
 ## 🎯 Key Principles Maintained
 
-### Core Files (DON'T MODIFY)
-These provide essential infrastructure:
-- ⭐ `server/server.py` - Hot reload, auto-discovery, logging
-- ⭐ `server/mcp_app.py` - FastMCP initialization
-- ⭐ `server/config.py` - Configuration loading
-- ⭐ `server/utils/*.py` - Core utilities
+### Core Files (USE AS BASE)
+These provide solid foundation - modify if needed:
+- ⭐ `server/server.py` - Hot reload, auto-discovery, logging (extend middleware/startup)
+- ⭐ `server/mcp_app.py` - FastMCP initialization (customize if needed)
+- ⭐ `server/config.py` - Configuration loading (extend for custom parsing)
+- ⭐ `server/utils/*.py` - Helper utilities (add your own)
 
 ### Customizable Files
 Users should edit these:

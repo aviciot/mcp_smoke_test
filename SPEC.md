@@ -24,9 +24,9 @@ This document defines the **exact patterns and structure** to follow when creati
 your_mcp/
 ├── server/
 │   ├── __init__.py                    # Empty file
-│   ├── config.py                      # Configuration loader (MODULE, not package) ⭐ DON'T MODIFY
-│   ├── server.py                      # Starlette app + middleware ⭐ DON'T MODIFY
-│   ├── mcp_app.py                     # FastMCP instance (MINIMAL - no tool logic) ⭐ DON'T MODIFY
+│   ├── config.py                      # Configuration loader (MODULE, not package) ⭐ BASE TEMPLATE
+│   ├── server.py                      # Starlette app + middleware ⭐ BASE TEMPLATE
+│   ├── mcp_app.py                     # FastMCP instance (MINIMAL - no tool logic) ⭐ BASE TEMPLATE
 │   │
 │   ├── config/                        # Configuration directory
 │   │   ├── settings.yaml              # Default config 📝 CUSTOMIZE
@@ -61,11 +61,11 @@ your_mcp/
 │   │   ├── __init__.py
 │   │   └── *.py                       # 📝 CUSTOMIZE: Database connection logic
 │   │
-│   └── utils/                         # Utility modules ⭐ DON'T MODIFY
+│   └── utils/                         # Utility modules ⭐ BASE TEMPLATE
 │       ├── __init__.py
-│       ├── import_utils.py            # Auto-discovery
-│       ├── config_validator.py        # Config validation
-│       ├── request_logging.py         # Request logging
+│       ├── import_utils.py            # Auto-discovery (extend if needed)
+│       ├── config_validator.py        # Config validation (add custom validators)
+│       ├── request_logging.py         # Request logging (customize format)
 │       └── rate_limiting.py           # Rate limiting (optional)
 │
 ├── tests/                             # Test files

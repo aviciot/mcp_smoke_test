@@ -37,13 +37,15 @@ This is a **template repository** for creating MCP servers. It includes:
 
 ### 🔑 Key Principle
 
-**Keep important files unchanged** (server.py, mcp_app.py, config.py). These provide:
+**Use core files as base templates** (server.py, mcp_app.py, config.py). These provide:
 - Hot reload functionality
 - Auto-discovery of tools
 - Structured logging
 - Request tracking
 
-**Customize these**:
+💡 **Modify them if you need to**, but they work well out-of-the-box for most cases.
+
+**Always customize these**:
 - `server/config/settings.yaml` - Your configuration
 - `server/tools/*.py` - Your tools
 - `server/knowledge_base/*.md` - Your documentation
@@ -185,9 +187,9 @@ template_mcp/
 │
 └── server/                          # Python application
     ├── __init__.py                  # Package marker
-    ├── server.py                    # ⭐ Starlette app (DON'T MODIFY)
-    ├── mcp_app.py                   # ⭐ FastMCP instance (DON'T MODIFY)
-    ├── config.py                    # ⭐ Config loader (DON'T MODIFY)
+    ├── server.py                    # ⭐ BASE TEMPLATE (modify if needed)
+    ├── mcp_app.py                   # ⭐ BASE TEMPLATE (modify if needed)
+    ├── config.py                    # ⭐ BASE TEMPLATE (modify if needed)
     │
     ├── config/                      # Configuration files
     │   ├── settings.yaml            # 📝 CUSTOMIZE: Default config
@@ -226,9 +228,9 @@ template_mcp/
 ```
 
 ### File Legend
-- ⭐ **DON'T MODIFY** - Core infrastructure, keep as-is
-- 📝 **CUSTOMIZE** - Edit these for your MCP
-- 🔒 **CORE UTILITIES** - Infrastructure code
+- ⭐ **BASE TEMPLATE** - Use as foundation, modify if needed
+- 📝 **CUSTOMIZE** - Always edit these for your MCP
+- 🔒 **UTILITIES** - Helper functions, extend as needed
 
 ---
 
@@ -656,18 +658,21 @@ readinessProbe:
    - File structure requirements
    - Best practices
 
-2. **[server/server.py](server/server.py)** - DON'T MODIFY
+2. **[server/server.py](server/server.py)** - BASE TEMPLATE
    - Hot reload setup
    - Auto-discovery
    - Middleware configuration
+   - 💡 Modify if you need custom middleware or startup logic
 
-3. **[server/mcp_app.py](server/mcp_app.py)** - DON'T MODIFY
+3. **[server/mcp_app.py](server/mcp_app.py)** - BASE TEMPLATE
    - FastMCP initialization
-   - Keep minimal
+   - Keep minimal by default
+   - 💡 Modify if you need custom MCP configuration
 
-4. **[server/config.py](server/config.py)** - DON'T MODIFY
+4. **[server/config.py](server/config.py)** - BASE TEMPLATE
    - Configuration loading
    - Environment handling
+   - 💡 Modify if you need custom config parsing
 
 ### What to Customize
 
@@ -678,11 +683,11 @@ readinessProbe:
 - `README.md` - Update this file with user's MCP details
 - `.env` - User's environment variables
 
-❌ **NEVER MODIFY**:
-- `server/server.py` - Core infrastructure
-- `server/mcp_app.py` - FastMCP setup
-- `server/config.py` - Config loader
-- `server/utils/*.py` - Core utilities
+⭐ **USE AS BASE (modify if needed)**:
+- `server/server.py` - Core infrastructure (works well as-is, but can customize middleware/startup)
+- `server/mcp_app.py` - FastMCP setup (minimal by default, extend if needed)
+- `server/config.py` - Config loader (handles YAML/env, extend for custom parsing)
+- `server/utils/*.py` - Utility functions (extend with your own helpers)
 
 ### Knowledge Base Setup
 
