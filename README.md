@@ -16,6 +16,7 @@
 - [Project Structure](#project-structure)
 - [Creating Your MCP](#creating-your-mcp)
 - [Knowledge Base Setup](#knowledge-base-setup)
+- [Feedback System (Optional)](#feedback-system-optional)
 - [Traefik Gateway Integration](#traefik-gateway-integration)
 - [Development Guide](#development-guide)
 - [Testing](#testing)
@@ -89,6 +90,13 @@ This is a **template repository** for creating MCP servers. It includes:
 - ✅ **Comprehensive SPEC.md** - Complete patterns for LLM-assisted development
 - ✅ **Template Files** - Knowledge base templates included
 - ✅ **Clear Structure** - Predictable organization for code generation
+
+### Optional Features
+- ✅ **Feedback System** - User feedback with GitHub integration (disabled by default)
+  - Interactive quality checking
+  - Multi-level rate limiting
+  - Admin dashboard for feedback management
+  - See [FEEDBACK_SETUP_GUIDE.md](FEEDBACK_SETUP_GUIDE.md) for setup
 
 ---
 
@@ -412,6 +420,65 @@ get_knowledge_base_content(topic="overview")
 get_knowledge_base_content(topic="workflows")
 get_knowledge_base_content(topic="tool:my_tool_name")
 ```
+
+---
+
+## 🎯 Feedback System (Optional)
+
+This template includes an **optional** interactive feedback system that allows users to report bugs, request features, and suggest improvements directly through the MCP.
+
+**Status:** ⚠️ Disabled by default - requires configuration to enable
+
+### Features
+
+- ✅ **Interactive Quality Checking** - Analyzes feedback clarity, suggests improvements
+- ✅ **Multi-Level Rate Limiting** - Per-user and per-team limits to prevent spam
+- ✅ **GitHub Integration** - Automatically creates GitHub issues
+- ✅ **Admin Dashboard** - View feedback stats, submissions, and blocks
+- ✅ **LLM-Powered Improvement** - Help users rewrite unclear feedback
+
+### Quick Enable
+
+1. **Edit `server/config/settings.yaml`:**
+```yaml
+feedback:
+  enabled: true  # Change from false to true
+  github:
+    repo: "YOUR_USERNAME/YOUR_REPO"
+    maintainer: "YOUR_GITHUB_USERNAME"
+```
+
+2. **Set GitHub token in `.env`:**
+```bash
+GITHUB_TOKEN=github_pat_YOUR_TOKEN_HERE
+```
+
+3. **Restart server:**
+```bash
+docker-compose restart
+```
+
+### Documentation
+
+See [FEEDBACK_SETUP_GUIDE.md](FEEDBACK_SETUP_GUIDE.md) for:
+- Complete configuration options
+- Rate limiting customization
+- Admin tools usage
+- Quality checking details
+- Testing procedures
+- Troubleshooting guide
+
+### Available Tools (When Enabled)
+
+**User Tools:**
+- `report_mcp_issue_interactive` - Report bugs, features, improvements
+- `improve_my_feedback` - Get help improving unclear feedback
+- `search_mcp_issues` - Search existing GitHub issues
+
+**Admin Tools (require admin API key):**
+- `get_feedback_dashboard` - View complete feedback dashboard
+- `get_github_issues_summary` - See GitHub issues created from feedback
+- `get_feedback_by_client` - View specific team's feedback
 
 ---
 

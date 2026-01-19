@@ -118,7 +118,15 @@ class Config:
         """Get authentication token"""
         # Check environment variable first, then config
         return os.getenv('AUTH_TOKEN') or self.get('security.authentication.bearer_token')
-    
+
+    def is_feedback_enabled(self) -> bool:
+        """Check if feedback system is enabled"""
+        return self.get('feedback.enabled', False)
+
+    def get_feedback_config(self) -> Dict[str, Any]:
+        """Get complete feedback configuration"""
+        return self.get('feedback', {})
+
     def reload(self):
         """Reload configuration from file"""
         self._config = self._load_config()

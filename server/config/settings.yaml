@@ -20,3 +20,40 @@ security:
 
 # Add your custom configuration below
 # ==================================
+
+# Feedback System Configuration
+# ==============================
+# Optional: Enable user feedback and GitHub issue creation
+# To enable: Set feedback.enabled to true and configure GitHub settings
+feedback:
+  enabled: false  # Set to true to enable feedback system
+
+  # GitHub integration (required if enabled)
+  github:
+    repo: "OWNER/REPO"  # e.g., "aviciot/my-mcp-server"
+    token_env: "GITHUB_TOKEN"  # Environment variable containing GitHub token
+    maintainer: "MAINTAINER_NAME"  # Your GitHub username
+
+  # Rate limiting configuration
+  rate_limits:
+    # Per-session limits (individual user)
+    session:
+      max_per_hour: 3
+      max_per_day: 10
+
+    # Per-client/team limits (optional, set to null to disable)
+    client:
+      max_per_hour: 20
+      max_per_day: 50
+
+  # Quality checking
+  quality:
+    min_title_length: 5
+    max_title_length: 200
+    min_description_length: 10
+    max_description_length: 5000
+    auto_improve_threshold: 4.0  # Score below this triggers improvement suggestion
+
+  # Admin access (for viewing feedback dashboard)
+  admin:
+    api_key_name: "admin"  # Which API key has admin access

@@ -6,6 +6,9 @@ MCP server with authentication middleware and auto-discovery
 
 import os
 import sys
+
+# Add parent directory to path to allow imports from sibling directories
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import signal
 import logging
 import importlib
@@ -113,9 +116,75 @@ logger.info("=" * 80)
 os.environ["PYTHONUNBUFFERED"] = "1"
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# Get FastMCP HTTP app and create Starlette with its lifespan
+from contextlib import asynccontextmanager
+
+# Knowledge DB initialization
+async def init_knowledge_db():
+    """Initialize knowledge DB connection (required for admin features and feedback)."""
+    from knowledge_db import get_knowledge_db
+
+    logger.info("🔗 Initializing MCP Knowledge DB...")
+    db = get_knowledge_db()
+    if db.config is None:
+        logger.warning("⚠️  MCP knowledge DB: Config loading failed - continuing without knowledge DB")
+        return
+
+    success = await db.init()
+    if success and db.is_enabled:
+        logger.info("✅ MCP knowledge DB connection: SUCCESS")
+        # Get cache stats for diagnostic info
+        try:
+            stats = await db.get_cache_stats()
+            logger.info(f"   📊 Cache stats: {stats.get('tables_cached', 0)} tables, {stats.get('relationships_cached', 0)} relationships")
+
+            # Warm cache for better performance
+            if stats.get('tables_cached', 0) > 0:
+                logger.info("🔥 Warming cache with frequently accessed tables...")
+                warm_stats = await db.warm_cache_on_startup(top_n=50)
+                logger.info(f"   🔥 Cache warmed: {warm_stats.get('warmed', 0)} tables, {warm_stats.get('relationships_warmed', 0)} relationships")
+                if warm_stats.get('top_domains'):
+                    logger.info(f"   🏷️  Top domains: {', '.join(warm_stats['top_domains'][:5])}")
+        except Exception as stats_error:
+            logger.warning(f"   ⚠️  Could not get cache stats: {stats_error}")
+    else:
+        logger.warning("⚠️  MCP knowledge DB connection: FAILED - continuing without knowledge DB")
+        status = db.get_connection_status()
+        logger.debug(f"   Connection status: {status}")
+
+@asynccontextmanager
+async def lifespan(app):
+    """Application lifespan manager - runs on startup and shutdown."""
+    # Startup: Initialize Knowledge DB
+    try:
+        await init_knowledge_db()
+    except Exception as e:
+        logger.error(f"❌ MCP knowledge DB initialization failed: {e}", exc_info=True)
+        logger.warning("⚠️  Continuing without knowledge DB (admin features may not work)")
+
+    yield
+
+    # Shutdown: Cleanup Knowledge DB
+    try:
+        from knowledge_db import cleanup_knowledge_db
+        await cleanup_knowledge_db()
+        logger.info("✅ Knowledge DB cleanup complete")
+    except Exception as e:
+        logger.error(f"⚠️  Error during Knowledge DB cleanup: {e}")
+
+# Get FastMCP HTTP app
 mcp_http_app = mcp.http_app()
-app = Starlette(lifespan=mcp_http_app.lifespan)
+
+# Wrap the MCP lifespan with our own lifespan
+@asynccontextmanager
+async def combined_lifespan(app):
+    """Combined lifespan for both MCP and Knowledge DB."""
+    # Start our lifespan
+    async with lifespan(app):
+        # Start MCP lifespan
+        async with mcp_http_app.lifespan(app):
+            yield
+
+app = Starlette(lifespan=combined_lifespan)
 
 
 # ========================================
@@ -123,17 +192,17 @@ app = Starlette(lifespan=mcp_http_app.lifespan)
 # ========================================
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Authentication middleware - validates Bearer token"""
-    
+
     async def dispatch(self, request, call_next):
         # Skip auth for health check and info endpoints
         if request.url.path in ["/healthz", "/health", "/version", "/_info"]:
             return await call_next(request)
-        
+
         # Check if authentication is enabled
         if not config.is_authentication_enabled():
             logger.debug("Authentication disabled - allowing request")
             return await call_next(request)
-        
+
         # Extract token from Authorization header
         auth_header = request.headers.get("Authorization")
         if not auth_header:
@@ -142,7 +211,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 {"error": "Missing Authorization header"},
                 status_code=401
             )
-        
+
         # Validate Bearer token format
         if not auth_header.startswith("Bearer "):
             logger.warning("Invalid Authorization header format")
@@ -150,20 +219,72 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 {"error": "Invalid Authorization header format. Use: Bearer <token>"},
                 status_code=401
             )
-        
+
         # Extract and validate token
         token = auth_header[7:]  # Remove "Bearer " prefix
         expected_token = config.get_auth_token()
-        
+
         if token != expected_token:
             logger.warning("Invalid authentication token")
             return JSONResponse(
                 {"error": "Invalid authentication token"},
                 status_code=403
             )
-        
+
         # Token valid - proceed
         logger.debug("Authentication successful")
+        return await call_next(request)
+
+
+# ========================================
+# SESSION CONTEXT MIDDLEWARE (for Feedback System)
+# ========================================
+class SessionContextMiddleware(BaseHTTPMiddleware):
+    """
+    Sets session and client context variables for feedback tracking.
+
+    Only active when feedback system is enabled in settings.yaml.
+    Extracts session ID from request headers and sets context variables
+    for use in feedback tools.
+    """
+
+    async def dispatch(self, request, call_next):
+        # Only activate if feedback system is enabled
+        if not config.is_feedback_enabled():
+            return await call_next(request)
+
+        try:
+            # Import here to avoid circular dependency
+            from tools.feedback_context import set_request_context
+
+            # Extract session ID from headers (if provided by MCP client)
+            session_id = request.headers.get("X-Session-ID") or request.headers.get("X-Request-ID")
+
+            # If no session ID provided, generate one from connection info
+            if not session_id:
+                import uuid
+                session_id = str(uuid.uuid4())
+
+            # Extract client ID (from auth token or default)
+            client_id = "anonymous"
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                # In production, you'd decode the token to get actual client_id
+                # For now, use a hash of the token as client_id
+                import hashlib
+                token = auth_header[7:]
+                client_id = hashlib.md5(token.encode()).hexdigest()[:16]
+
+            # Set context for this request
+            set_request_context(
+                session_id=session_id,
+                user_id=client_id,
+                client_id=client_id
+            )
+
+        except Exception as e:
+            logger.warning(f"Failed to set session context: {e}")
+
         return await call_next(request)
 
 
@@ -171,6 +292,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 if config.is_authentication_enabled():
     app.add_middleware(AuthenticationMiddleware)
     logger.info("Authentication middleware enabled")
+
+# Add session context middleware (for feedback system)
+if config.is_feedback_enabled():
+    app.add_middleware(SessionContextMiddleware)
+    logger.info("Session context middleware enabled (feedback system active)")
 
 # Add request logging middleware
 from utils.request_logging import RequestLoggingMiddleware
