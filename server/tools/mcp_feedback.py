@@ -16,36 +16,43 @@ logger = logging.getLogger(__name__)
 
 
 def load_feedback_config():
-    """Load feedback configuration from config.py (template-mcp style)."""
+    """Load feedback configuration from settings.yaml or environment."""
     try:
-        from config import get_config
-        config = get_config()
+        import yaml
+        with open("/app/config/settings.yaml", "r") as f:
+            config = yaml.safe_load(f)
+            feedback_config = config.get("feedback", {})
+            quality_config = feedback_config.get("quality", {})
 
-        # Get feedback configuration
-        feedback_enabled = config.get('feedback.enabled', False)
-        github_config = config.get('feedback.github', {})
-
-        # Get GitHub token from environment
-        token_env_var = github_config.get('token_env', 'GITHUB_TOKEN')
-        github_token = os.getenv(token_env_var)
-
-        return {
-            "enabled": feedback_enabled,
-            "repo": github_config.get("repo", "OWNER/REPO"),
-            "maintainer": github_config.get("maintainer", "MAINTAINER_NAME"),
-            "github_token": github_token,
-            "rate_limits": config.get('feedback.rate_limits', {}),
-            "quality": config.get('feedback.quality', {}),
-        }
+            return {
+                "enabled": feedback_config.get("enabled", True),
+                "repo": feedback_config.get("repo", os.getenv("GITHUB_REPO", "owner/repo")),
+                "maintainer": feedback_config.get("maintainer", "maintainer"),
+                "github_token": os.getenv("GITHUB_TOKEN"),
+                "safety": feedback_config.get("safety", {}),
+                "quality": {
+                    "enabled": quality_config.get("enabled", True),
+                    "auto_improve": quality_config.get("auto_improve", True),
+                    "auto_improve_threshold": quality_config.get("auto_improve_threshold", 4.0),
+                    "good_quality_threshold": quality_config.get("good_quality_threshold", 7.0),
+                    "min_quality_score": quality_config.get("min_quality_score", 0),
+                },
+            }
     except Exception as e:
         logger.warning(f"Could not load feedback config: {e}")
         return {
             "enabled": False,
-            "repo": "OWNER/REPO",
-            "maintainer": "MAINTAINER_NAME",
+            "repo": "owner/repo",
+            "maintainer": "maintainer",
             "github_token": None,
-            "rate_limits": {},
-            "quality": {},
+            "safety": {},
+            "quality": {
+                "enabled": True,
+                "auto_improve": True,
+                "auto_improve_threshold": 4.0,
+                "good_quality_threshold": 7.0,
+                "min_quality_score": 0,
+            },
         }
 
 
@@ -123,7 +130,7 @@ async def report_mcp_issue_interactive(
 
         # Import safety and quality modules
         from tools.feedback_context import get_user_identifier, get_client_identifier, get_tracking_info
-        from tools.feedback_safety import get_safety_manager
+        from tools.feedback_safety_db import get_safety_manager
         from tools.feedback_quality import get_quality_analyzer, quick_quality_check
 
         # Get tracking info
@@ -136,14 +143,14 @@ async def report_mcp_issue_interactive(
 
         # STEP 1: Check rate limits
         safety = get_safety_manager()
-        allowed, limit_msg = safety.check_rate_limit(session_id, client_id)
+        allowed, limit_msg = await safety.check_rate_limit(session_id, client_id)
 
         if not allowed:
             logger.warning(f"⏱️ Rate limit exceeded for {session_id[:20]}")
             return {
                 "error": "Rate limit exceeded",
                 "message": limit_msg,
-                "stats": safety.get_stats(session_id, client_id)
+                "stats": await safety.get_stats(session_id, client_id)
             }
 
         logger.info("✅ Rate limit check passed")
@@ -162,7 +169,7 @@ async def report_mcp_issue_interactive(
 
         # STEP 3: Check for duplicates
         content = f"{title} {description}"
-        is_duplicate, duplicate_msg = safety.check_duplicate(session_id, content)
+        is_duplicate, duplicate_msg = await safety.check_duplicate(session_id, content)
 
         if is_duplicate:
             logger.warning(f"🔄 Duplicate submission detected")
@@ -177,6 +184,9 @@ async def report_mcp_issue_interactive(
         is_good, quality_msg, analysis = quick_quality_check(issue_type, title, description)
 
         logger.info(f"📊 Quality score: {analysis['quality_score']}/10")
+
+        # Get stats for tracking
+        stats = await safety.get_stats(session_id, client_id)
 
         result = {
             "stage": "quality_check",
@@ -195,7 +205,7 @@ async def report_mcp_issue_interactive(
             },
             "tracking": {
                 "session_id": tracking["session_id"],
-                "submissions_remaining": safety.get_stats(session_id, client_id)
+                "submissions_remaining": stats
             }
         }
 
@@ -216,10 +226,14 @@ async def report_mcp_issue_interactive(
         # STEP 6: Create preview
         labels = [issue_type, "user-submitted"]
 
-        # Add quality label
-        if analysis["quality_score"] >= 7:
+        # Add quality label (use thresholds from config)
+        config = load_feedback_config()
+        good_threshold = config["quality"]["good_quality_threshold"]
+        improve_threshold = config["quality"]["auto_improve_threshold"]
+
+        if analysis["quality_score"] >= good_threshold:
             labels.append("good-quality")
-        elif analysis["quality_score"] < 4:
+        elif analysis["quality_score"] < improve_threshold:
             labels.append("needs-clarification")
 
         issue_body = f"""{description}
@@ -262,13 +276,23 @@ async def report_mcp_issue_interactive(
                         "preview": preview
                     }
 
-                # Record submission
-                safety.record_submission(session_id, client_id, content)
+                # Record submission to database
+                await safety.record_submission(
+                    session_identifier=session_id,
+                    client_identifier=client_id,
+                    submission_type=issue_type,
+                    title=title,
+                    description=description,
+                    quality_score=analysis["quality_score"],
+                    github_issue_number=github_result.get("number"),
+                    github_issue_url=github_result.get("html_url")
+                )
 
                 logger.info(f"✅ Issue created: {github_result['html_url']}")
 
                 result["stage"] = "submitted"
                 result["github_issue"] = github_result
+                stats = await safety.get_stats(session_id, client_id)
                 result["message"] = (
                     f"✅ **Issue Created Successfully!**\n\n"
                     f"**Issue #{github_result['number']}:** {github_result['html_url']}\n\n"
@@ -277,7 +301,7 @@ async def report_mcp_issue_interactive(
                     f"• The maintainer ({config['maintainer']}) will review your submission\n"
                     f"• You can track progress at the link above\n"
                     f"• You can search existing issues with `search_mcp_issues`\n\n"
-                    f"**Submissions remaining today:** {safety.get_stats(session_id, client_id)['session']['remaining_today']}"
+                    f"**Submissions remaining today:** {stats['session']['remaining_today']}"
                 )
 
                 return result
