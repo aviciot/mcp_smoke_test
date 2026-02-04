@@ -54,44 +54,54 @@ database:
 
 # Predefined Databases for Comparison
 # These databases can be referenced by name in compare_database_tables tool
+# Users can see available databases by calling list_available_databases()
 comparison_databases:
   # Oracle Databases
-  oracle_prod:
+  oracle_statements:
     type: "oracle"
-    description: "Production Oracle Database"
-    host: "${ORACLE_PROD_HOST}"
+    description: "Oracle Statements Database"
+    host: "${ORACLE_STATEMENTS_HOST}"
     port: 1521
-    service_name: "${ORACLE_PROD_SERVICE}"
-    user: "${ORACLE_PROD_USER}"
-    password: "${ORACLE_PROD_PASSWORD}"
+    service_name: "${ORACLE_STATEMENTS_SERVICE}"
+    user: "${ORACLE_STATEMENTS_USER}"
+    password: "${ORACLE_STATEMENTS_PASSWORD}"
     
-  oracle_test:
+  oracle_billings:
     type: "oracle"
-    description: "Test Oracle Database"
-    host: "${ORACLE_TEST_HOST}"
+    description: "Oracle Billings Database"
+    host: "${ORACLE_BILLINGS_HOST}"
     port: 1521
-    service_name: "${ORACLE_TEST_SERVICE}"
-    user: "${ORACLE_TEST_USER}"
-    password: "${ORACLE_TEST_PASSWORD}"
+    service_name: "${ORACLE_BILLINGS_SERVICE}"
+    user: "${ORACLE_BILLINGS_USER}"
+    password: "${ORACLE_BILLINGS_PASSWORD}"
+    
+  oracle_transformer:
+    type: "oracle"
+    description: "Oracle Transformer Database"
+    host: "${ORACLE_TRANSFORMER_HOST}"
+    port: 1521
+    service_name: "${ORACLE_TRANSFORMER_SERVICE}"
+    user: "${ORACLE_TRANSFORMER_USER}"
+    password: "${ORACLE_TRANSFORMER_PASSWORD}"
   
   # MySQL Databases
+  mysql_brian:
+    type: "mysql"
+    description: "MySQL Brian Database"
+    host: "${MYSQL_BRIAN_HOST}"
+    port: 3306
+    database: "${MYSQL_BRIAN_DATABASE}"
+    user: "${MYSQL_BRIAN_USER}"
+    password: "${MYSQL_BRIAN_PASSWORD}"
+    
   mysql_prod:
     type: "mysql"
-    description: "Production MySQL Database"
+    description: "MySQL Production Database"
     host: "${MYSQL_PROD_HOST}"
     port: 3306
     database: "${MYSQL_PROD_DATABASE}"
     user: "${MYSQL_PROD_USER}"
     password: "${MYSQL_PROD_PASSWORD}"
-    
-  mysql_test:
-    type: "mysql"
-    description: "Test MySQL Database"
-    host: "${MYSQL_TEST_HOST}"
-    port: 3306
-    database: "${MYSQL_TEST_DATABASE}"
-    user: "${MYSQL_TEST_USER}"
-    password: "${MYSQL_TEST_PASSWORD}"
   
   # PostgreSQL Databases
   postgres_prod:

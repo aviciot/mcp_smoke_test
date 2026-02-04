@@ -56,8 +56,11 @@ async def list_available_databases(
     # Format output
     output = ["📊 Available Databases for Comparison", "=" * 50, ""]
     
+    total_dbs = sum(len(dbs) for dbs in by_type.values())
+    output.append(f"Total: {total_dbs} databases configured\n")
+    
     for db_type in sorted(by_type.keys()):
-        output.append(f"🔹 {db_type.upper()}")
+        output.append(f"🔹 {db_type.upper()} Databases ({len(by_type[db_type])})")
         output.append("-" * 40)
         for db in by_type[db_type]:
             output.append(f"  • {db['name']}")
@@ -66,14 +69,29 @@ async def list_available_databases(
             output.append("")
     
     output.append("💡 Usage Examples:")
-    output.append("  - Compare production vs test:")
-    output.append("    compare_database_tables(")
-    output.append("      source_database='oracle_prod',")
-    output.append("      target_database='oracle_test',")
-    output.append("      source_query='SELECT id, name FROM users',")
-    output.append("      target_query='SELECT id, name FROM users',")
-    output.append("      key_columns=['id']")
-    output.append("    )")
+    output.append("")
+    output.append("  1. Compare Oracle databases:")
+    output.append("     compare_database_tables(")
+    output.append("       source_database='oracle_statements',")
+    output.append("       target_database='oracle_billings',")
+    output.append("       source_query='SELECT id, amount FROM orders',")
+    output.append("       target_query='SELECT id, amount FROM orders',")
+    output.append("       key_columns=['id']")
+    output.append("     )")
+    output.append("")
+    output.append("  2. Cross-database comparison (Oracle to MySQL):")
+    output.append("     compare_database_tables(")
+    output.append("       source_database='oracle_statements',")
+    output.append("       target_database='mysql_brian',")
+    output.append("       source_query='SELECT customer_id, email FROM customers',")
+    output.append("       target_query='SELECT customer_id, email FROM customers',")
+    output.append("       key_columns=['customer_id']")
+    output.append("     )")
+    output.append("")
+    output.append("📚 Need help? Try:")
+    output.append("   • get_quick_start_guide() - Quick start guide")
+    output.append("   • get_knowledge_base_content(topic='workflows') - Step-by-step guides")
+    output.append("   • get_comparison_safety_info() - Learn about safety mechanisms")
     
     return "\n".join(output)
 

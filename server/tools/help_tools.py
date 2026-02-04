@@ -199,3 +199,82 @@ See server/knowledge_base/README.md for complete setup instructions.
 """
     
     return content
+
+
+@mcp.tool(
+    name="get_quick_start_guide",
+    description=(
+        "🚀 Get a quick start guide for using MCP Smoke Test.\n\n"
+        "Returns a concise guide to get started with database comparisons immediately.\n\n"
+        "**Use this when:** User wants to start quickly without reading full documentation"
+    ),
+)
+def get_quick_start_guide():
+    """Get quick start guide for new users"""
+    
+    return {
+        "title": "MCP Smoke Test - Quick Start Guide",
+        "overview": "MCP Smoke Test is a safe, interactive database comparison tool with 4-layer safety checks.",
+        
+        "step_1_list_databases": {
+            "description": "See available databases",
+            "command": "list_available_databases()",
+            "example_output": {
+                "databases_by_type": {
+                    "oracle": ["oracle_statements", "oracle_billings", "oracle_transformer"],
+                    "mysql": ["mysql_brian", "mysql_prod"],
+                    "postgresql": ["postgres_prod", "postgres_test"]
+                }
+            }
+        },
+        
+        "step_2_simple_comparison": {
+            "description": "Compare two tables",
+            "command": "compare_database_tables(...)",
+            "example": {
+                "source_database": "oracle_statements",
+                "target_database": "oracle_billings",
+                "source_query": "SELECT * FROM orders WHERE order_date >= SYSDATE - 30",
+                "target_query": "SELECT * FROM orders WHERE order_date >= SYSDATE - 30",
+                "key_columns": ["order_id"]
+            }
+        },
+        
+        "step_3_review_results": {
+            "description": "Understand comparison results",
+            "result_fields": {
+                "missing_in_target": "Rows in source but not in target",
+                "extra_in_target": "Rows in target but not in source",
+                "value_differences": "Rows with different column values"
+            }
+        },
+        
+        "safety_features": {
+            "layer_1": "Query validation - Only SELECT allowed",
+            "layer_2": "Database availability - Connection check",
+            "layer_3": "Execution plan - Block if > 5 minutes",
+            "layer_4": "In-database comparison - Efficient temp tables"
+        },
+        
+        "common_workflows": [
+            "Simple table comparison (same structure)",
+            "Filtered comparison (WHERE clause)",
+            "Cross-database comparison (Oracle to MySQL)",
+            "Migration verification (pre/post migration)"
+        ],
+        
+        "next_steps": [
+            "Read full documentation: get_knowledge_base_content(topic='overview')",
+            "Learn workflows: get_knowledge_base_content(topic='workflows')",
+            "Get safety info: get_comparison_safety_info()",
+            "Troubleshoot issues: get_knowledge_base_content(topic='troubleshooting')"
+        ],
+        
+        "tips": [
+            "✅ Always call list_available_databases() first",
+            "✅ Use indexed columns in WHERE clauses",
+            "✅ Test with small datasets first",
+            "✅ Read error messages carefully",
+            "❌ Don't use SELECT * on huge tables without filters"
+        ]
+    }
