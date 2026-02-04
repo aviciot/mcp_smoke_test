@@ -10,8 +10,18 @@ from mcp_app import mcp
 logger = logging.getLogger(__name__)
 
 
-@mcp.tool()
-async def echo(message: str, repeat: int = 1) -> str:
+@mcp.tool(
+    name="echo",
+    description=(
+        "Echo a message back, optionally repeating it.\n\n"
+        "**Use when:** Testing the MCP connection or demonstrating simple tool usage.\n"
+        "**Parameters:**\n"
+        "  - message: Text to echo\n"
+        "  - repeat: Number of times to repeat (1-10)\n\n"
+        "**Returns:** The echoed message (repeated if specified)"
+    )
+)
+def echo(message: str, repeat: int = 1):
     """
     Echo a message back, optionally repeating it
     
@@ -26,7 +36,7 @@ async def echo(message: str, repeat: int = 1) -> str:
         repeat: Number of times to repeat (default: 1, max: 10)
     
     Returns:
-        str: The echoed message or error message
+        The echoed message or error message
     """
     try:
         # Validate inputs
@@ -40,7 +50,7 @@ async def echo(message: str, repeat: int = 1) -> str:
             return "Error: repeat must be at least 1"
         
         if repeat > 10:
-            return "Error: repeat cannot exceed 10 (got {repeat})"
+            return f"Error: repeat cannot exceed 10 (got {repeat})"
         
         # Build response
         result = "\n".join([message] * repeat)
@@ -53,5 +63,5 @@ async def echo(message: str, repeat: int = 1) -> str:
         logger.exception(f"Unexpected error in echo tool: {e}")
         
         # Return user-friendly error message (don't expose stack traces)
-        return f"Error: An unexpected error occurred. Please contact support."
+        return "Error: An unexpected error occurred. Please contact support."
 

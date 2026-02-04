@@ -104,7 +104,8 @@ class Config:
         
         return value
     
-    def is_authentication_enabled(self) -> bool:
+    @property
+    def auth_enabled(self) -> bool:
         """Check if authentication is enabled"""
         # Check environment variable first, then config
         env_enabled = os.getenv('AUTH_ENABLED', '').lower()
@@ -112,12 +113,34 @@ class Config:
             return True
         if env_enabled in ('false', '0', 'no'):
             return False
-        return self.get('security.authentication.enabled', False)
+        return self.get('server.authentication.enabled', False)
     
-    def get_auth_token(self) -> Optional[str]:
-        """Get authentication token"""
-        # Check environment variable first, then config
-        return os.getenv('AUTH_TOKEN') or self.get('security.authentication.bearer_token')
+    @property
+    def api_keys(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get API keys configuration
+        
+        Returns:
+            Dict mapping API key to client info: {key: {"name": "...", "role": "..."}}
+        """
+        api_keys_config = self.get('server.authentication.api_keys', [])
+        
+        # Build dictionary: {api_key: {"name": ..., "role": ...}}
+        result = {}
+        for key_config in api_keys_config:
+            api_key = key_config.get('key')
+            name = key_config.get('name')
+            role = key_config.get('role', 'user')
+            
+            if api_key and name:
+                result[api_key] = {
+                    "name": name,
+                    "role": role,
+                    "description": key_config.get('description', '')
+                }
+        
+        logger.debug(f"Loaded {len(result)} API keys")
+        return result
 
     def is_feedback_enabled(self) -> bool:
         """Check if feedback system is enabled"""

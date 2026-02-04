@@ -12,9 +12,10 @@ from typing import Optional
 _current_session_id: ContextVar[Optional[str]] = ContextVar('session_id', default=None)
 _current_user_id: ContextVar[Optional[str]] = ContextVar('user_id', default=None)
 _current_client_id: ContextVar[Optional[str]] = ContextVar('client_id', default=None)
+_current_client_role: ContextVar[Optional[str]] = ContextVar('client_role', default='user')
 
 
-def set_request_context(session_id: str, user_id: str, client_id: str = None):
+def set_request_context(session_id: str, user_id: str, client_id: str = None, client_role: str = 'user'):
     """
     Set request context (called by middleware).
 
@@ -22,10 +23,12 @@ def set_request_context(session_id: str, user_id: str, client_id: str = None):
         session_id: Unique session identifier from MCP transport
         user_id: User/team identifier from API key (may be shared)
         client_id: Client identifier (same as user_id but clearer naming)
+        client_role: Role from authentication (admin, dba, user)
     """
     _current_session_id.set(session_id)
     _current_user_id.set(user_id)
     _current_client_id.set(client_id or user_id)
+    _current_client_role.set(client_role)
 
 
 def get_session_id() -> str:
@@ -81,11 +84,12 @@ def get_tracking_info() -> dict:
     Get complete tracking information.
 
     Returns:
-        dict with session_id, client_id, and composite identifier
+        dict with session_id, client_id, client_role, and composite identifier
     """
     return {
         "session_id": get_session_id(),
         "client_id": get_client_id(),
+        "client_role": _current_client_role.get() or 'user',
         "user_identifier": get_user_identifier(),
         "client_identifier": get_client_identifier()
     }

@@ -199,53 +199,15 @@ app = Starlette(lifespan=combined_lifespan)
 # ========================================
 # AUTHENTICATION MIDDLEWARE
 # ========================================
-class AuthenticationMiddleware(BaseHTTPMiddleware):
-    """Authentication middleware - validates Bearer token"""
+# Import our API key-based authentication middleware
+from auth_middleware import AuthMiddleware
 
-    async def dispatch(self, request, call_next):
-        # Skip auth for health check and info endpoints
-        if request.url.path in ["/healthz", "/health", "/version", "/_info"]:
-            return await call_next(request)
-
-        # Check if authentication is enabled
-        if not config.is_authentication_enabled():
-            logger.debug("Authentication disabled - allowing request")
-            return await call_next(request)
-
-        # Extract token from Authorization header
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            logger.warning("Missing Authorization header")
-            return JSONResponse(
-                {"error": "Missing Authorization header"},
-                status_code=401
-            )
-
-        # Validate Bearer token format
-        if not auth_header.startswith("Bearer "):
-            logger.warning("Invalid Authorization header format")
-            return JSONResponse(
-                {"error": "Invalid Authorization header format. Use: Bearer <token>"},
-                status_code=401
-            )
-
-        # Extract and validate token
-        token = auth_header[7:]  # Remove "Bearer " prefix
-        expected_token = config.get_auth_token()
-
-        if token != expected_token:
-            logger.warning("Invalid authentication token")
-            return JSONResponse(
-                {"error": "Invalid authentication token"},
-                status_code=403
-            )
-
-        # Token valid - proceed
-        logger.debug("Authentication successful")
-        return await call_next(request)
-
-
-# ========================================
+# Add authentication middleware if enabled
+if config.auth_enabled:
+    logger.info("🔐 Adding authentication middleware (API key-based)")
+    app.add_middleware(AuthMiddleware, config=config)
+else:
+    logger.warning("⚠️  Authentication disabled - all endpoints are public")
 # SESSION CONTEXT MIDDLEWARE (for Feedback System)
 # ========================================
 class SessionContextMiddleware(BaseHTTPMiddleware):
@@ -285,10 +247,16 @@ class SessionContextMiddleware(BaseHTTPMiddleware):
                 client_id = hashlib.md5(token.encode()).hexdigest()[:16]
 
             # Set context for this request
+            # Extract client info from request.state (set by AuthMiddleware)
+            client_id = getattr(request.state, 'client_id', 'anonymous')
+            client_role = getattr(request.state, 'client_role', 'user')
+
+            # Set context for this request
             set_request_context(
                 session_id=session_id,
                 user_id=client_id,
-                client_id=client_id
+                client_id=client_id,
+                client_role=client_role
             )
 
         except Exception as e:
@@ -297,13 +265,8 @@ class SessionContextMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-# Add authentication middleware if enabled
-if config.is_authentication_enabled():
-    app.add_middleware(AuthenticationMiddleware)
-    logger.info("Authentication middleware enabled")
-
 # Add session context middleware (for feedback system)
-if config.is_feedback_enabled():
+if config.get('feedback.enabled', False):
     app.add_middleware(SessionContextMiddleware)
     logger.info("Session context middleware enabled (feedback system active)")
 
