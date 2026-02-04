@@ -22,17 +22,12 @@ server:
       - name: "admin"
         key: "${ADMIN_API_KEY}"
         role: "admin"
-        description: "Administrator - full access to all tools"
-      
-      - name: "dba"
-        key: "${DBA_API_KEY}"
-        role: "dba"
-        description: "DBA - database export tools only"
+        description: "Administrator - full access, can override safety limits"
       
       - name: "user"
         key: "${USER_API_KEY}"
         role: "user"
-        description: "Standard user - smoke test and comparison tools"
+        description: "Standard user - full access with safety checks enforced"
       
       - name: "development"
         key: "dev-api-key-12345-insecure"
@@ -46,7 +41,7 @@ server:
       - "/version"
       - "/_info"
 
-# PostgreSQL Database Configuration
+# PostgreSQL Database Configuration (MCP internal database)
 database:
   host: "localhost"
   port: 5436  # External port (mapped from container's 5432)
@@ -57,6 +52,73 @@ database:
   pool_size: 10
   max_overflow: 20
 
+# Predefined Databases for Comparison
+# These databases can be referenced by name in compare_database_tables tool
+comparison_databases:
+  # Oracle Databases
+  oracle_prod:
+    type: "oracle"
+    description: "Production Oracle Database"
+    host: "${ORACLE_PROD_HOST}"
+    port: 1521
+    service_name: "${ORACLE_PROD_SERVICE}"
+    user: "${ORACLE_PROD_USER}"
+    password: "${ORACLE_PROD_PASSWORD}"
+    
+  oracle_test:
+    type: "oracle"
+    description: "Test Oracle Database"
+    host: "${ORACLE_TEST_HOST}"
+    port: 1521
+    service_name: "${ORACLE_TEST_SERVICE}"
+    user: "${ORACLE_TEST_USER}"
+    password: "${ORACLE_TEST_PASSWORD}"
+  
+  # MySQL Databases
+  mysql_prod:
+    type: "mysql"
+    description: "Production MySQL Database"
+    host: "${MYSQL_PROD_HOST}"
+    port: 3306
+    database: "${MYSQL_PROD_DATABASE}"
+    user: "${MYSQL_PROD_USER}"
+    password: "${MYSQL_PROD_PASSWORD}"
+    
+  mysql_test:
+    type: "mysql"
+    description: "Test MySQL Database"
+    host: "${MYSQL_TEST_HOST}"
+    port: 3306
+    database: "${MYSQL_TEST_DATABASE}"
+    user: "${MYSQL_TEST_USER}"
+    password: "${MYSQL_TEST_PASSWORD}"
+  
+  # PostgreSQL Databases
+  postgres_prod:
+    type: "postgresql"
+    description: "Production PostgreSQL Database"
+    host: "${POSTGRES_PROD_HOST}"
+    port: 5432
+    database: "${POSTGRES_PROD_DATABASE}"
+    user: "${POSTGRES_PROD_USER}"
+    password: "${POSTGRES_PROD_PASSWORD}"
+    
+  postgres_test:
+    type: "postgresql"
+    description: "Test PostgreSQL Database"
+    host: "${POSTGRES_TEST_HOST}"
+    port: 5432
+    database: "${POSTGRES_TEST_DATABASE}"
+    user: "${POSTGRES_TEST_USER}"
+    password: "${POSTGRES_TEST_PASSWORD}"
+
+# Safety Limits for Database Comparisons
+comparison_safety:
+  max_execution_time_sec: 300  # 5 minutes (can be overridden by admin)
+  max_response_time_ms: 5000   # 5 seconds for DB availability check
+  warn_row_count: 1000000      # Warn if query returns > 1M rows
+  admin_can_override: true     # Allow admin to bypass limits
+
 # StorageGrid Configuration
 storagegrid:
   endpoint: "${STORAGEGRID_ENDPOINT}"
@@ -64,22 +126,6 @@ storagegrid:
   secret_key: "${STORAGEGRID_SECRET_KEY}"
   bucket_name: "${STORAGEGRID_BUCKET}"
   region: "us-east-1"
-
-# Oracle Database Configuration (for exports)
-oracle:
-  host: "${ORACLE_HOST}"
-  port: 1521
-  service_name: "${ORACLE_SERVICE}"
-  user: "${ORACLE_USER}"
-  password: "${ORACLE_PASSWORD}"
-
-# MySQL Database Configuration (for exports)
-mysql:
-  host: "${MYSQL_HOST}"
-  port: 3306
-  database: "${MYSQL_DATABASE}"
-  user: "${MYSQL_USER}"
-  password: "${MYSQL_PASSWORD}"
 
 # Smoke Test Configuration
 smoke_test:
